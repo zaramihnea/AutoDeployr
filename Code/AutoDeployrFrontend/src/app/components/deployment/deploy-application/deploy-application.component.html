@@ -1,0 +1,1387 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Deploy Application</h1>
+    <p class="mt-1 text-sm text-gray-500">
+      Upload and deploy your monolithic application to transform it into serverless functions.
+    </p>
+  </div>
+
+  <!-- Progress steps -->
+  <div class="mt-8 flex items-center justify-between">
+    <div class="w-full max-w-2xl mx-auto">
+      <div class="flex items-center">
+        <div class="w-1/3">
+          <div class="relative flex flex-col items-center">
+            <div [ngClass]="{'bg-indigo-600': currentStep >= 1, 'bg-gray-200': currentStep < 1}" 
+                 class="rounded-full h-12 w-12 flex items-center justify-center z-10">
+              <span class="text-white font-semibold">1</span>
+            </div>
+            <div class="mt-2 text-center">
+              <span class="text-sm font-medium" [ngClass]="{'text-indigo-600': currentStep >= 1, 'text-gray-500': currentStep < 1}">
+                Choose Deployment Method
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="w-1/3">
+          <div class="relative flex flex-col items-center">
+            <div [ngClass]="{'bg-indigo-600': currentStep >= 2, 'bg-gray-200': currentStep < 2}" 
+                 class="rounded-full h-12 w-12 flex items-center justify-center z-10">
+              <span class="text-white font-semibold">2</span>
+            </div>
+            <div class="mt-2 text-center">
+              <span class="text-sm font-medium" [ngClass]="{'text-indigo-600': currentStep >= 2, 'text-gray-500': currentStep < 2}">
+                Configure Environment
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="w-1/3">
+          <div class="relative flex flex-col items-center">
+            <div [ngClass]="{'bg-indigo-600': currentStep >= 3, 'bg-gray-200': currentStep < 3}" 
+                 class="rounded-full h-12 w-12 flex items-center justify-center z-10">
+              <span class="text-white font-semibold">3</span>
+            </div>
+            <div class="mt-2 text-center">
+              <span class="text-sm font-medium" [ngClass]="{'text-indigo-600': currentStep >= 3, 'text-gray-500': currentStep < 3}">
+                Deploy
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="mt-4 rounded-md bg-red-50 p-4">
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg
+          class="h-5 w-5 text-red-400"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </div>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-red-800">
+          {{ errorMessage }}
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div
+    *ngIf="deploymentResult && deploymentResult.status === 'success'"
+    class="mt-4 rounded-md bg-green-50 p-4"
+  >
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg
+          class="h-5 w-5 text-green-400"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </div>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-green-800">
+          Deployment successful!
+        </h3>
+        <div class="mt-2 text-sm text-green-700">
+          <p>
+            Successfully deployed
+            {{ deploymentResult.deployedFunctions.length }} functions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Choose Deployment Method -->
+  <div
+    *ngIf="currentStep === 1"
+    class="mt-6 bg-white shadow rounded-lg"
+  >
+    <div class="px-6 py-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Choose Your Deployment Method
+      </h2>
+      
+      <!-- Modern Tab Navigation -->
+      <div class="tab-container mb-10 px-2 sm:px-4">
+        <div class="tab-wrapper grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button 
+            (click)="setActiveTab('file')"
+            [class.active]="activeTab === 'file'"
+            class="modern-tab-card flex flex-col items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span class="tab-text">Upload File</span>
+          </button>
+          <button 
+            (click)="setActiveTab('direct')"
+            [class.active]="activeTab === 'direct'"
+            class="modern-tab-card flex flex-col items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <span class="tab-text">Direct Function</span>
+          </button>
+          <button 
+            (click)="setActiveTab('github')"
+            [class.active]="activeTab === 'github'"
+            class="modern-tab-card flex flex-col items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            <span class="tab-text">GitHub</span>
+          </button>
+          <button 
+            (click)="setActiveTab('ai')"
+            [class.active]="activeTab === 'ai'"
+            class="modern-tab-card flex flex-col items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="tab-text">AI Generate</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- File Upload Tab Content -->
+      <div *ngIf="activeTab === 'file'" class="mt-6">
+        <div 
+          class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md"
+          [ngClass]="{'border-gray-300': !dragOver, 'border-indigo-500 bg-indigo-50': dragOver}"
+          (dragover)="onDragOver($event)" 
+          (dragleave)="onDragLeave($event)" 
+          (drop)="onDrop($event)"
+        >
+          <div class="space-y-1 text-center">
+            <!-- Changed to file/document icon -->
+            <svg
+              class="mx-auto h-12 w-12" 
+              [ngClass]="{'text-gray-400': !dragOver, 'text-indigo-500': dragOver}"
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                stroke-linecap="round" 
+                stroke-linejoin="round" 
+                stroke-width="2" 
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+              />
+            </svg>
+            <div class="flex text-sm text-gray-600 justify-center">
+              <label
+                for="file-upload"
+                class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
+              >
+                <span>Upload a file</span>
+                <input
+                  id="file-upload"
+                  name="file-upload"
+                  type="file"
+                  class="sr-only"
+                  (change)="onFileSelected($event)"
+                  accept=".zip"
+                />
+              </label>
+              <p class="pl-1">or drag and drop</p>
+            </div>
+            <p class="text-xs text-gray-500">
+              ZIP
+            </p>
+          </div>
+        </div>
+
+        <div
+          *ngIf="uploadedFileName"
+          class="mt-3 flex items-center text-sm text-gray-500"
+        >
+          <svg
+            class="flex-shrink-0 mr-1.5 h-5 w-5 text-green-500"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          {{ uploadedFileName }}
+        </div>
+        <div
+          *ngIf="
+            selectedFile &&
+            selectedFile.name.toLowerCase().endsWith('.zip')
+          "
+          class="mt-4"
+        >
+          <label class="block text-sm font-medium text-gray-700"
+            >Custom Application Name</label
+          >
+          <input
+            type="text"
+            [(ngModel)]="customAppName"
+            (ngModelChange)="handleFileAppNameChange($event)"
+            placeholder="Enter custom app name"
+            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+          />
+          <!-- App exists message for file upload -->
+          <div *ngIf="selectedFileAppInfo" class="mt-1 text-xs text-blue-600">
+            This app already exists and your function will deploy to it.
+          </div>
+        </div>
+      </div>
+
+      <!-- Direct Function Tab Content -->
+      <div *ngIf="activeTab === 'direct'" class="mt-6">
+        <p class="text-sm text-gray-500 mb-6">
+          Write your function code directly and deploy it as a serverless function.
+        </p>
+        
+        <form [formGroup]="directFunctionForm" class="space-y-6">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Application Name
+              </label>
+              <input 
+                type="text"
+                formControlName="appName"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                placeholder="Enter application name"
+              />
+              <div *ngIf="directFunctionForm.get('appName')?.invalid && directFunctionForm.get('appName')?.touched" class="mt-1 text-xs text-red-600">
+                Use only letters, numbers, underscores, and hyphens
+              </div>
+              <!-- App exists message -->
+              <div *ngIf="selectedAppInfo" class="mt-1 text-xs text-blue-600">
+                This app already exists and your function will deploy to it.
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Language
+              </label>
+              <select 
+                formControlName="language"
+                class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option *ngFor="let lang of filteredLanguages" [value]="lang.value">
+                  {{ lang.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Function Code
+            </label>
+            <textarea 
+              formControlName="functionCode"
+              class="w-full h-64 font-mono text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 p-3"
+              placeholder="// Write your function code here"
+            ></textarea>
+            <div *ngIf="directFunctionForm.get('functionCode')?.invalid && directFunctionForm.get('functionCode')?.touched" class="mt-1 text-xs text-red-600">
+              Function code is required
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- GitHub Repository Tab Content -->
+      <div *ngIf="activeTab === 'github'" class="mt-6">
+        <p class="text-sm text-gray-500 mb-6">
+          Deploy an application directly from a GitHub repository.
+        </p>
+        
+        <form [formGroup]="githubForm" class="space-y-6">
+          <!-- Repository URL -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              GitHub Repository URL
+            </label>
+            <div class="mt-1 relative rounded-md shadow-sm">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+              </div>
+              <input
+                type="text"
+                formControlName="repositoryUrl"
+                placeholder="https://github.com/username/repository"
+                class="pl-10 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+            </div>
+            <div *ngIf="githubForm.get('repositoryUrl')?.invalid && githubForm.get('repositoryUrl')?.touched" class="mt-1 text-xs text-red-600">
+              Please enter a valid GitHub repository URL
+            </div>
+          </div>
+          
+          <!-- Branch -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Branch
+            </label>
+            <div class="mt-1 flex rounded-md shadow-sm">
+              <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <!-- Branch icon -->
+                  <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  formControlName="branch"
+                  class="focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-md pl-10 sm:text-sm border-gray-300"
+                />
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              Default branch suggestions: main, master, develop
+            </p>
+          </div>
+          
+          <!-- Custom App Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Custom App Name (Optional)
+            </label>
+            <input 
+              type="text"
+              formControlName="customAppName"
+              placeholder="my-app"
+              class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+            />
+                          <div *ngIf="githubForm.get('customAppName')?.invalid && githubForm.get('customAppName')?.touched" class="mt-1 text-xs text-red-600">
+                Use only letters, numbers, underscores, and hyphens
+              </div>
+            <!-- App exists message for GitHub form -->
+            <div *ngIf="selectedGitHubAppInfo" class="mt-1 text-xs text-blue-600">
+              This app already exists and your function will deploy to it.
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              If not specified, the name will be extracted from the repository URL
+            </p>
+          </div>
+          
+          <!-- Private Repository Toggle -->
+          <div class="relative flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="private-repo"
+                type="checkbox"
+                (change)="togglePrivateRepo($event)"
+                [checked]="isPrivateRepo"
+                class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="private-repo" class="font-medium text-gray-700">Private Repository</label>
+              <p class="text-gray-500">Check this if the repository requires authentication</p>
+            </div>
+          </div>
+          
+          <!-- Credentials for Private Repository -->
+          <div *ngIf="isPrivateRepo" class="space-y-4 p-4 bg-gray-50 rounded-md">
+            <h4 class="text-sm font-medium text-gray-700">Repository Credentials</h4>
+            
+            <!-- Username -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                GitHub Username
+              </label>
+              <input 
+                type="text"
+                formControlName="username"
+                placeholder="Your GitHub username"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+              <div *ngIf="githubForm.get('username')?.invalid && githubForm.get('username')?.touched" class="mt-1 text-xs text-red-600">
+                Username is required for private repositories
+              </div>
+            </div>
+            
+            <!-- Token -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Personal Access Token
+              </label>
+              <input 
+                type="password"
+                formControlName="token"
+                placeholder="Your GitHub personal access token"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+              <div *ngIf="githubForm.get('token')?.invalid && githubForm.get('token')?.touched" class="mt-1 text-xs text-red-600">
+                Personal access token is required for private repositories
+              </div>
+              <p class="mt-1 text-xs text-gray-500">
+                Token should have 'repo' scope permissions
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- AI Generated Function Tab Content -->
+      <div *ngIf="activeTab === 'ai'" class="mt-6">
+        <p class="text-sm text-gray-500 mb-6">
+          Generate a serverless function using AI. Just describe what you want the function to do.
+        </p>
+        
+        <form [formGroup]="aiGenerateForm" class="space-y-6">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Application Name
+              </label>
+              <input 
+                type="text"
+                formControlName="appName"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+              <div *ngIf="aiGenerateForm.get('appName')?.invalid && aiGenerateForm.get('appName')?.touched" class="mt-1 text-xs text-red-600">
+                Use only letters, numbers, underscores, and hyphens
+              </div>
+              <!-- App exists message for AI form -->
+              <div *ngIf="selectedAiAppInfo" class="mt-1 text-xs text-blue-600">
+                This app already exists and your function will deploy to it.
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Language
+              </label>
+              <select 
+                formControlName="language"
+                class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option *ngFor="let option of languageFrameworkOptions" [value]="option.language">
+                  {{option.label}}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Animated Container for Prompt/Code Switching -->
+          <div class="relative mt-4">
+            <!-- Prompt Input Section -->
+            <div 
+              *ngIf="showPrompt" 
+              [@promptCodeSwitch]="animationState"
+              class="relative"
+            >
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Function Description
+              </label>
+              <div class="relative siri-intelligence-container">
+                <!-- Apple Intelligence glow effects for the text area -->
+                <div class="siri-edge-glow" [class.active]="generatingCode"></div>
+                <div class="siri-scanning-light" [class.active]="generatingCode"></div>
+                
+                <textarea 
+                  formControlName="functionDescription"
+                  class="w-full min-h-[16rem] h-auto border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 p-3 relative z-10"
+                  [ngClass]="{'border-blue-500 shadow-lg': generatingCode}"
+                  placeholder="Describe what you want the function to do..."
+                ></textarea>
+              </div>
+              
+              <div *ngIf="aiGenerateForm.get('functionDescription')?.invalid && aiGenerateForm.get('functionDescription')?.touched" class="mt-1 text-xs text-red-600">
+                Function description is required
+              </div>
+              
+              <div class="flex justify-end mt-4">
+                <button
+                  type="button"
+                  (click)="generateCode()"
+                  [disabled]="aiGenerateForm.invalid || generatingCode"
+                  class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed relative siri-intelligence-button"
+                  [class.active-glow]="generatingCode"
+                >
+                  <svg
+                    *ngIf="generatingCode"
+                    class="animate-spin -ml-1 mr-2 h-4 w-4 text-white relative z-10"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <svg
+                    *ngIf="!generatingCode"
+                    class="-ml-1 mr-2 h-4 w-4 text-white relative z-10"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                  <span class="relative z-10">{{ generatingCode ? 'Generating...' : 'Generate Code' }}</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Generated Code Section -->
+            <div 
+              *ngIf="!showPrompt" 
+              [@promptCodeSwitch]="animationState"
+              class="relative"
+            >
+              <div class="flex justify-between items-center mb-1">
+                <label class="block text-sm font-medium text-gray-700">
+                  Generated Code
+                </label>
+                <button
+                  type="button"
+                  (click)="modifyPrompt()"
+                  class="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                >
+                  <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Modify Prompt
+                </button>
+              </div>
+              
+              <div class="relative siri-intelligence-container">
+                <!-- Rainbow animation contained within the box -->
+                <div class="siri-rainbow-overlay" [class.siri-rainbow-active]="showRainbowAnimation"></div>
+                
+                <!-- Code container - improved visibility with better styling -->
+                <pre 
+                  class="w-full min-h-[16rem] h-auto font-mono text-sm border border-gray-300 rounded-md bg-gray-50 p-3 overflow-auto whitespace-pre-wrap relative z-10"
+                  [class.active-glow]="showRainbowAnimation"
+                ><code [class.fade-in]="typingAnimation" [contentEditable]="!generatingCode">{{ showCodeContent ? generatedCode : '' }}</code></pre>
+                
+                <button 
+                  type="button"
+                  (click)="copyGeneratedCode()"
+                  class="absolute top-2 right-2 p-1 rounded-md bg-white border border-gray-300 shadow-sm text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 z-20"
+                  title="Copy code"
+                >
+                  <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Toast message for copy action -->
+              <div *ngIf="showToast" class="fixed bottom-4 right-4 bg-black bg-opacity-75 text-white px-4 py-2 rounded-md text-sm animate-fade-in-out">
+                Code copied to clipboard!
+              </div>
+              
+              <div class="flex justify-end mt-4">
+                <button
+                  type="button"
+                  (click)="regenerateCode()"
+                  class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button
+          type="button"
+          (click)="goToStep(2)"
+          [disabled]="!isStep1Valid()"
+          class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span>Next: Configure Environment</span>
+          <svg class="ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Configure Environment -->
+  <div
+    *ngIf="currentStep === 2"
+    class="mt-6 bg-white shadow rounded-lg"
+  >
+    <div class="px-6 py-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Configure Environment Variables
+      </h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Add environment variables that your application needs.
+      </p>
+
+      <form [formGroup]="deployForm" class="space-y-4">
+        <div formArrayName="envVars">
+          <div
+            *ngFor="let envVar of envVarsControls.controls; let i = index"
+            [formGroupName]="i"
+            class="flex space-x-2 mb-2 items-start"
+          >
+            <div class="flex-1">
+              <input
+                formControlName="key"
+                type="text"
+                placeholder="KEY"
+                class="focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+            </div>
+            <div class="flex-1">
+              <input
+                formControlName="value"
+                type="text"
+                placeholder="VALUE"
+                class="focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+              />
+            </div>
+            <button
+              type="button"
+              (click)="removeEnvVar(i)"
+              class="inline-flex items-center p-1 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <svg
+                class="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="addEnvVar()"
+          class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg
+            class="mr-1 h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            />
+          </svg>
+          Add Environment Variable
+        </button>
+        
+        <!-- Privacy Settings Section -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Privacy Settings</h3>
+          <p class="text-sm text-gray-500 mb-6">
+            Choose whether your deployed functions should be public or private. Private functions require an API key for access.
+          </p>
+          
+          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center space-x-4">
+              <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-sm font-medium text-gray-900">Function Privacy</h4>
+                <p class="text-sm text-gray-500">
+                  {{ isPrivate ? 'Functions will be private and require an API key to access. You\'ll receive the API key after deployment.' : 'Functions will be publicly accessible without authentication.' }}
+                </p>
+              </div>
+            </div>
+            
+            <!-- Beautiful Toggle Switch -->
+            <div class="flex items-center space-x-3">
+              <span class="text-sm font-medium text-gray-700">
+                {{ isPrivate ? 'Private' : 'Public' }}
+              </span>
+              
+              <div class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                   [class.bg-indigo-600]="isPrivate"
+                   [class.bg-gray-200]="!isPrivate"
+                   (click)="isPrivate = !isPrivate"
+                   role="switch"
+                   [attr.aria-checked]="isPrivate">
+                
+                <!-- Toggle Button -->
+                <span 
+                  class="pointer-events-none relative inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out"
+                  [class.translate-x-5]="isPrivate"
+                  [class.translate-x-0]="!isPrivate">
+                  
+                  <!-- Privacy Icons -->
+                  <span class="absolute inset-0 h-full w-full rounded-full flex items-center justify-center">
+                    <!-- Lock Icon (Private) -->
+                    <svg 
+                      *ngIf="isPrivate"
+                      class="h-3 w-3 text-indigo-600" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    
+                    <!-- Unlock Icon (Public) -->
+                    <svg 
+                      *ngIf="!isPrivate"
+                      class="h-3 w-3 text-gray-400" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Info box for private functions -->
+          <div *ngIf="isPrivate" class="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-md">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-indigo-800">Private Function Deployment</h3>
+                <div class="mt-2 text-sm text-indigo-700">
+                  <ul class="list-disc pl-5 space-y-1">
+                    <li>Functions will require an API key in the header: <code class="bg-indigo-100 px-1 py-0.5 rounded">X-Function-Key: your-api-key</code></li>
+                    <li>API keys will be automatically generated and shown in the deployment results</li>
+                    <li>You can change privacy settings later in the Functions list</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="mt-6 flex justify-between">
+        <button
+          type="button"
+          (click)="goToStep(1)"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+        <button
+          type="button"
+          (click)="goToStep(3)"
+          class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+        >
+          <span>Next: Deploy</span>
+          <svg class="ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Deploy -->
+  <div
+    *ngIf="currentStep === 3"
+    class="mt-6 bg-white shadow rounded-lg"
+  >
+    <div class="px-6 py-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Deploy Application
+      </h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Review your deployment settings and deploy your application.
+      </p>
+
+      <div class="border-t border-gray-200 pt-4">
+        <dl class="divide-y divide-gray-200">
+          <!-- File/Path for application upload tab -->
+          <div *ngIf="activeTab === 'file'" class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              Application Path
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              {{ appPath || uploadedFileName || 'No path provided' }}
+            </dd>
+          </div>
+
+          <!-- Direct function info -->
+          <div *ngIf="activeTab === 'direct'" class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              Function Details
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <div class="space-y-1">
+                <p><span class="font-medium">App Name:</span> {{ directFunctionForm.get('appName')?.value }}</p>
+                <p><span class="font-medium">Language:</span> {{ directFunctionForm.get('language')?.value }}</p>
+              </div>
+            </dd>
+          </div>
+
+          <!-- GitHub info -->
+          <div *ngIf="activeTab === 'github'" class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              GitHub Repository
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <div class="space-y-1">
+                <p><span class="font-medium">Repository URL:</span> {{ githubForm.get('repositoryUrl')?.value }}</p>
+                <p><span class="font-medium">Branch:</span> {{ githubForm.get('branch')?.value }}</p>
+                <p *ngIf="githubForm.get('customAppName')?.value"><span class="font-medium">Custom App Name:</span> {{ githubForm.get('customAppName')?.value }}</p>
+                <p><span class="font-medium">Private Repository:</span> {{ isPrivateRepo ? 'Yes' : 'No' }}</p>
+              </div>
+            </dd>
+          </div>
+          
+          <!-- AI Generated Function info -->
+          <div *ngIf="activeTab === 'ai'" class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              AI Generated Function
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <div class="space-y-1">
+                <p><span class="font-medium">App Name:</span> {{ aiGenerateForm.get('appName')?.value }}</p>
+                <p><span class="font-medium">Language:</span> {{ aiGenerateForm.get('language')?.value }}</p>
+              </div>
+            </dd>
+          </div>
+          
+          <!-- AI Function Description -->
+          <div *ngIf="activeTab === 'ai'" class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              Function Description
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              {{ aiGenerateForm.get('functionDescription')?.value }}
+            </dd>
+          </div>
+
+          <div
+            *ngIf="activeTab === 'file' && customAppName"
+            class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Custom App Name
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              {{ customAppName }}
+            </dd>
+          </div>
+
+          <!-- Privacy Status -->
+          <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">
+              Function Privacy
+            </dt>
+            <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
+              <div class="flex items-center space-x-2">
+                <svg 
+                  class="h-4 w-4"
+                  [class.text-indigo-600]="isPrivate"
+                  [class.text-gray-400]="!isPrivate"
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor">
+                  <path *ngIf="isPrivate" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <path *ngIf="!isPrivate" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+                <span 
+                  class="font-medium"
+                  [class.text-indigo-600]="isPrivate"
+                  [class.text-gray-600]="!isPrivate">
+                  {{ isPrivate ? 'Private' : 'Public' }}
+                </span>
+                <span class="text-xs text-gray-500">
+                  {{ isPrivate ? '(API key will be generated)' : '(No authentication required)' }}
+                </span>
+              </div>
+            </dd>
+          </div>
+
+          <div
+            *ngIf="envVarsControls.length > 0"
+            class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Environment Variables
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <ul
+                class="border border-gray-200 rounded-md divide-y divide-gray-200"
+              >
+                <li
+                  *ngFor="let envVar of envVarsControls.controls"
+                  class="pl-3 pr-4 py-2 flex items-center justify-between text-sm"
+                >
+                  <div class="w-0 flex-1 flex items-center">
+                    <span class="ml-2 flex-1 w-0 truncate font-medium">{{
+                      envVar.get('key')?.value || ''
+                    }}</span>
+                    <span class="ml-2 flex-1 w-0 truncate">{{
+                      envVar.get('value')?.value || ''
+                    }}</span>
+                  </div>
+                </li>
+              </ul>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="mt-6 flex justify-between">
+        <button
+          type="button"
+          (click)="goToStep(2)"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+        <button
+          type="button"
+          [disabled]="isLoading"
+          (click)="deployApplication()"
+          class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span *ngIf="isLoading" class="mr-2">
+            <!-- Loading spinner -->
+            <svg
+              class="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </span>
+          Deploy Application
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deployment Result -->
+  <div
+    *ngIf="deploymentResult && currentStep === 3"
+    class="mt-6 bg-white shadow rounded-lg"
+  >
+    <div class="px-6 py-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Deployment Results
+      </h2>
+
+      <div class="border-t border-gray-200 pt-4">
+        <dl class="divide-y divide-gray-200">
+          <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd
+              class="mt-1 text-sm sm:mt-0 sm:col-span-2"
+              [ngClass]="{
+                'text-green-600': deploymentResult.status === 'success',
+                'text-red-600': deploymentResult.status !== 'success'
+              }"
+            >
+              {{ deploymentResult.status }}
+            </dd>
+          </div>
+
+          <div class="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+            <dt class="text-sm font-medium text-gray-500">Message</dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              {{ deploymentResult.message }}
+            </dd>
+          </div>
+
+          <div
+            *ngIf="
+              (deploymentResult.deployedFunctionDetails && deploymentResult.deployedFunctionDetails.length > 0) ||
+              (deploymentResult.deployedFunctions && deploymentResult.deployedFunctions.length > 0)
+            "
+            class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Deployed Functions
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <div
+                class="bg-gray-50 p-3 rounded-md mb-3 text-sm text-gray-700"
+              >
+                <p>
+                  All functions are accessible at the base URL:
+                  <code class="bg-gray-100 px-1 py-0.5 rounded"
+                    >http://localhost:8080/api/v1/{{currentUser?.username}}/functions/</code
+                  >
+                </p>
+              </div>
+              
+              <!-- Use detailed function info if available -->
+              <ul
+                *ngIf="deploymentResult.deployedFunctionDetails && deploymentResult.deployedFunctionDetails.length > 0"
+                class="space-y-4"
+              >
+                <li
+                  *ngFor="let funcDetail of deploymentResult.deployedFunctionDetails"
+                  class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm"
+                >
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <svg
+                          class="flex-shrink-0 h-5 w-5 text-green-500"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                        <span class="font-medium text-gray-900">{{ funcDetail.functionName }}</span>
+                        <!-- Privacy Status -->
+                        <span class="px-2 py-1 text-xs rounded-full"
+                              [ngClass]="{
+                                'bg-red-100 text-red-800': funcDetail.isPrivate,
+                                'bg-green-100 text-green-800': !funcDetail.isPrivate
+                              }">
+                          {{ funcDetail.isPrivate ? 'Private' : 'Public' }}
+                        </span>
+                      </div>
+                      
+                      <!-- App Name -->
+                      <p class="text-xs text-gray-500 mb-2">{{ funcDetail.appName }}</p>
+                      
+                      <!-- Supported Methods -->
+                      <div *ngIf="funcDetail.supportedMethods && funcDetail.supportedMethods.length > 0" class="flex space-x-2 mb-3">
+                        <span
+                          *ngFor="let method of funcDetail.supportedMethods"
+                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          [ngClass]="{
+                            'bg-green-100 text-green-800': method === 'GET',
+                            'bg-blue-100 text-blue-800': method === 'POST',
+                            'bg-yellow-100 text-yellow-800': method === 'PUT',
+                            'bg-red-100 text-red-800': method === 'DELETE',
+                            'bg-purple-100 text-purple-800': method === 'PATCH',
+                            'bg-gray-100 text-gray-800': method === 'OPTIONS' || method === 'HEAD'
+                          }"
+                        >
+                          {{ method }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Function URL display with copy button -->
+                  <div class="flex items-center bg-gray-100 rounded px-3 py-2 mb-3">
+                    <code class="text-xs md:text-sm font-mono flex-1 truncate break-all">
+                      http://localhost:8080{{ funcDetail.functionUrl }}
+                    </code>
+                    <button
+                      (click)="copyFunctionUrl(funcDetail)"
+                      class="ml-2 inline-flex items-center p-1 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      title="Copy URL"
+                    >
+                      <svg
+                        class="h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- API Key Section for Private Functions -->
+                  <div *ngIf="funcDetail.isPrivate && funcDetail.apiKey" class="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="flex items-center space-x-2">
+                        <svg class="h-4 w-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span class="text-sm font-medium text-yellow-800">API Key:</span>
+                        <code class="text-sm font-mono bg-white px-2 py-1 rounded border text-gray-700">
+                          {{ getApiKeyDisplay(funcDetail.functionName, funcDetail.apiKey) }}
+                        </code>
+                        <button
+                          type="button"
+                          (click)="toggleApiKeyVisibility(funcDetail.functionName)"
+                          class="p-1 text-yellow-600 hover:text-yellow-800 focus:outline-none"
+                          [title]="isApiKeyVisible(funcDetail.functionName) ? 'Hide API key' : 'Show API key'"
+                        >
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path *ngIf="!isApiKeyVisible(funcDetail.functionName)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path *ngIf="!isApiKeyVisible(funcDetail.functionName)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <path *ngIf="isApiKeyVisible(funcDetail.functionName)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="copyApiKey(funcDetail.functionName, funcDetail.apiKey)"
+                          class="p-1 text-yellow-600 hover:text-yellow-800 focus:outline-none"
+                          title="Copy API key"
+                        >
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-yellow-700">
+                      Include this API key in the 'X-Function-Key' header when invoking this private function.
+                    </p>
+                  </div>
+
+                  <!-- Copy notifications -->
+                  <div
+                    *ngIf="copiedFunctionId === funcDetail.functionName"
+                    class="mt-2 text-xs text-green-600"
+                  >
+                    URL copied to clipboard!
+                  </div>
+                  <div
+                    *ngIf="copiedFunctionId === funcDetail.functionName + '_apikey'"
+                    class="mt-2 text-xs text-green-600"
+                  >
+                    API key copied to clipboard!
+                  </div>
+                </li>
+              </ul>
+              
+              <!-- Fallback to basic function list if detailed info not available -->
+              <ul
+                *ngIf="!deploymentResult.deployedFunctionDetails || deploymentResult.deployedFunctionDetails.length === 0"
+                class="border border-gray-200 rounded-md divide-y divide-gray-200"
+              >
+                <li
+                  *ngFor="let func of deploymentResult.deployedFunctions"
+                  class="pl-3 pr-4 py-3 flex flex-col"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                      <svg
+                        class="flex-shrink-0 h-5 w-5 text-green-500 mr-2"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                      <span class="font-medium">{{ func.name }}</span>
+                    </div>
+                    <div class="flex-shrink-0 flex space-x-2">
+                      <span
+                        *ngFor="let method of func.methods"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                        [ngClass]="{
+                          'bg-green-100 text-green-800': method === 'GET',
+                          'bg-blue-100 text-blue-800': method === 'POST',
+                          'bg-yellow-100 text-yellow-800': method === 'PUT',
+                          'bg-red-100 text-red-800': method === 'DELETE',
+                          'bg-purple-100 text-purple-800': method === 'PATCH',
+                          'bg-gray-100 text-gray-800': method === 'OPTIONS' || method === 'HEAD'
+                        }"
+                      >
+                        {{ method }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Function URL display with copy button -->
+                  <div
+                    class="mt-1 flex items-center bg-gray-100 rounded px-3 py-2"
+                  >
+                    <code
+                      class="text-xs md:text-sm font-mono flex-1 truncate break-all"
+                    >
+                      http://localhost:8080/api/v1/{{currentUser?.username}}/functions/{{
+                        func.appName || (activeTab === 'file' ? (customAppName || '') : 
+                                        activeTab === 'direct' ? directFunctionForm.get('appName')?.value : 
+                                        activeTab === 'ai' ? aiGenerateForm.get('appName')?.value :
+                                        githubForm.get('customAppName')?.value) || ''
+                      }}/{{ func.name
+                      }}{{
+                        func.path && !func.path.startsWith('/')
+                          ? '/'
+                          : ''
+                      }}{{ func.path || '' }}
+                    </code>
+                    <button
+                      (click)="copyFunctionUrl(func)"
+                      class="ml-2 inline-flex items-center p-1 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      title="Copy URL"
+                    >
+                      <svg
+                        class="h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 5H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- URL was copied notification -->
+                  <div
+                    *ngIf="copiedFunctionId === func.name"
+                    class="mt-1 text-xs text-green-600 fade-out"
+                  >
+                    URL copied to clipboard!
+                  </div>
+                </li>
+              </ul>
+            </dd>
+          </div>
+
+          <div
+            *ngIf="
+              deploymentResult.failedFunctions &&
+              deploymentResult.failedFunctions.length > 0
+            "
+            class="py-3 sm:grid sm:grid-cols-3 sm:gap-4"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Failed Functions
+            </dt>
+            <dd class="mt-1 text-sm text-red-600 sm:mt-0 sm:col-span-2">
+              <ul class="list-disc pl-5">
+                <li *ngFor="let func of deploymentResult.failedFunctions">
+                  {{ func }}
+                </li>
+              </ul>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="mt-6 flex space-x-3">
+        <button
+          type="button"
+          (click)="resetForm()"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Deploy Another Application
+        </button>
+        <button
+          type="button"
+          (click)="viewFunctions()"
+          class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+        >
+          View Deployed Functions
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast for copy notification -->
+<div
+  *ngIf="showToast"
+  class="fixed bottom-5 right-5 bg-black bg-opacity-80 text-white px-4 py-2 rounded-md shadow-lg fade-in-out"
+>
+  URL copied to clipboard!
+</div>

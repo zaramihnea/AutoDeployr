@@ -1,0 +1,42 @@
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+{{ORIGINAL_USINGS}}
+
+namespace {{FUNCTION_NAME}};
+
+[ApiController]
+[Route("api/[controller]")]
+public class {{CONTROLLER_NAME}}Function : ControllerBase
+{
+    private readonly ILogger<{{CONTROLLER_NAME}}Function> _logger;
+    {{DEPENDENCY_FIELDS}}
+
+    public {{CONTROLLER_NAME}}Function(ILogger<{{CONTROLLER_NAME}}Function> logger{{DEPENDENCY_CONSTRUCTOR_PARAMS}})
+    {
+        _logger = logger;
+        {{DEPENDENCY_CONSTRUCTOR_ASSIGNMENTS}}
+    }
+
+    {{HTTP_METHOD_ATTRIBUTES}}
+    public async Task<IActionResult> {{METHOD_NAME}}({{METHOD_PARAMETERS}})
+    {
+        try
+        {
+            _logger.LogInformation("Executing serverless function {{FUNCTION_NAME}}");
+            
+            // Original function logic:
+            var result = {{ORIGINAL_FUNCTION_BODY}}
+            return Ok(result);
+            
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in serverless function {{FUNCTION_NAME}}: {Error}", ex.Message);
+            return StatusCode(500, new { 
+                error = ex.Message,
+                function = "{{FUNCTION_NAME}}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+} 

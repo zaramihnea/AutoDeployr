@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "7r/rtRUlsuBdN8DG980mzbYaY6dD+cL/B/nb7W+ljko=",
+  "Source": "AutoDeployrAIServiceAndNETanalyzer",
+  "BasePath": "_content/AutoDeployrAIServiceAndNETanalyzer",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

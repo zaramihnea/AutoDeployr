@@ -1,0 +1,132 @@
+import json
+import logging
+from flask import Response
+
+logger = logging.getLogger(__name__)
+
+def is_flask_response(obj):
+    # Be more robust: check methods exist
+    return isinstance(obj, Response) or (hasattr(obj, 'get_data') and callable(obj.get_data) and hasattr(obj, 'status_code') and hasattr(obj, 'headers'))
+
+def handle_flask_response(resp, status_code=None, headers=None):
+    try:
+        final_status = status_code if status_code is not None else resp.status_code
+        # Ensure status is int
+        try:
+             final_status = int(final_status)
+        except (ValueError, TypeError):
+             logger.warning(f"Invalid status code type '{final_status}', defaulting to 500")
+             final_status = 500
+
+        merged_headers = dict(resp.headers)
+        if headers:
+            try:
+                merged_headers.update(headers) # headers should be a dict
+            except (TypeError, ValueError):
+                logger.warning(f"Invalid headers format provided: {headers}. Ignoring.")
+
+        # Ensure all header values are strings
+        stringified_headers = {str(k): str(v) for k, v in merged_headers.items()}
+
+        body_bytes = resp.get_data()
+        try:
+            # Attempt to decode as UTF-8, fallback to lossy decode
+            body_str = body_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            logger.warning("Response body is not valid UTF-8, decoding with replacements.")
+            body_str = body_bytes.decode('utf-8', errors='replace')
+
+        return {
+            "statusCode": final_status,
+            "headers": stringified_headers,
+            "body": body_str
+        }
+    except Exception as e:
+        logger.error(f"Error handling Flask response object: {e}", exc_info=True)
+        return {"statusCode": 500, "headers": {"Content-Type": "application/json"}, "body": json.dumps({'error': 'Failed to process Flask response'})}
+
+def normalize_response(result):
+    logger.debug(f"Normalizing response of type: {type(result)}")
+    status_code = 200
+    headers = {'Content-Type': 'application/json'} # Default headers
+    body = result
+
+    try:
+        # 1) Flask Response object
+        if is_flask_response(result):
+            logger.debug("Handling Flask Response object")
+            return handle_flask_response(result)
+
+        # 2) Tuple: (body, status) or (body, status, headers)
+        if isinstance(result, tuple):
+            logger.debug("Handling tuple response")
+            if not result:
+                 raise ValueError("Response tuple cannot be empty.")
+            
+            body = result[0]
+            if len(result) > 1:
+                status_code = int(result[1])
+            if len(result) > 2:
+                 if isinstance(result[2], dict):
+                      headers.update(result[2]) # Merge headers
+                 else:
+                      logger.warning(f"Headers in tuple response is not a dict: {result[2]}")
+            if len(result) > 3:
+                 logger.warning(f"Response tuple has unexpected length: {len(result)}")
+
+            # If the body part of the tuple is a Flask Response itself
+            if is_flask_response(body):
+                 logger.debug("Handling Flask Response within tuple")
+                 # Pass tuple's status/headers to override/merge
+                 return handle_flask_response(body, status_code, headers)
+            # Body is already extracted, fall through to JSON dump
+
+        # 3) Already in canonical format (dict with statusCode)
+        elif isinstance(result, dict) and 'statusCode' in result:
+            logger.debug("Response is already in canonical format")
+            # Ensure body is stringified if needed
+            if 'body' in result and not isinstance(result['body'], str):
+                 result['body'] = json.dumps(result['body'])
+            # Ensure headers exist and are stringified
+            result_headers = result.get('headers', {})
+            result['headers'] = {str(k): str(v) for k, v in result_headers.items()}
+            return result
+
+        # 4) Other types (string, dict, list, etc.) - treat as body
+        # Body is already assigned from result or tuple
+
+        # --- Final formatting --- 
+        # Ensure body is a JSON string unless it's already a string
+        if isinstance(body, (dict, list, int, float, bool)) or body is None:
+            body_str = json.dumps(body)
+        elif isinstance(body, bytes):
+            try:
+                body_str = body.decode('utf-8')
+                headers['Content-Type'] = 'text/plain; charset=utf-8' # Or guess content type
+            except UnicodeDecodeError:
+                logger.warning("Response body bytes are not valid UTF-8, returning as is with generic content type")
+                body_str = body.decode('utf-8', errors='replace')
+                headers['Content-Type'] = 'application/octet-stream'
+        elif isinstance(body, str):
+             body_str = body
+             # Check if it looks like HTML to set content type
+             if body_str.strip().startswith('<'): 
+                  headers['Content-Type'] = 'text/html; charset=utf-8'
+             else:
+                  headers['Content-Type'] = 'text/plain; charset=utf-8'
+        else:
+             logger.warning(f"Unhandled response body type: {type(body)}. Attempting string conversion.")
+             body_str = str(body)
+             headers['Content-Type'] = 'text/plain; charset=utf-8'
+
+        # Ensure all header values are strings
+        stringified_headers = {str(k): str(v) for k, v in headers.items()}
+
+        return {
+            "statusCode": status_code,
+            "headers": stringified_headers,
+            "body": body_str
+        }
+    except Exception as e:
+         logger.error(f"Error normalizing response: {e}", exc_info=True)
+         return {"statusCode": 500, "headers": {"Content-Type": "application/json"}, "body": json.dumps({'error': 'Failed to normalize response'})} 

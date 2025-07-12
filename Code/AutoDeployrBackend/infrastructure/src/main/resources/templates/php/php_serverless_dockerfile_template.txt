@@ -1,0 +1,43 @@
+FROM php:8.2-cli
+
+# Install system dependencies needed for Laravel
+RUN apt-get update && apt-get install -y \
+    libzip-dev \
+    libpq-dev \
+    unzip \
+    git \
+    && docker-php-ext-install zip pdo pdo_pgsql \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+COPY --from=composer:2.5 /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV FUNCTION_NAME={{FUNCTION_NAME}}
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_NO_INTERACTION=1
+
+# Copy application files
+COPY . .
+
+# Install dependencies with fallback handling
+RUN composer install --no-dev --optimize-autoloader --no-interaction || \
+    (echo "Composer install failed, trying with reduced requirements..." && \
+     composer install --no-dev --no-scripts --ignore-platform-reqs --no-interaction) || \
+    (echo "Composer install failed completely, creating minimal autoloader..." && \
+     mkdir -p vendor && echo '<?php' > vendor/autoload.php)
+
+# Create basic Laravel structure if missing
+RUN mkdir -p bootstrap/cache storage/logs storage/framework/cache storage/framework/sessions storage/framework/views \
+    && chmod -R 775 storage bootstrap/cache
+
+# Make function executable
+RUN chmod +x function.php
+
+# Direct PHP execution (like Java) - no web server needed!
+# Takes JSON event as input, outputs JSON response to stdout
+ENTRYPOINT ["php", "function.php"] 

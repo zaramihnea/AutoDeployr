@@ -1,0 +1,35 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project file first for better caching
+COPY *.csproj .
+
+# Restore with detailed output for debugging
+RUN dotnet restore --verbosity normal
+
+# Copy everything else
+COPY . .
+
+# Build and publish with detailed output
+RUN dotnet build -c Release --verbosity normal
+RUN dotnet publish -c Release -o /app --verbosity normal --no-build
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/runtime:8.0
+WORKDIR /app
+
+# Set environment variables
+ENV FUNCTION_NAME={{FUNCTION_NAME}}
+ENV DOTNET_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+# Copy published app
+COPY --from=build /app .
+
+# Verify the DLL exists
+RUN ls -la /app/
+
+# No port exposure needed for CLI application
+# EXPOSE 80
+
+ENTRYPOINT ["dotnet", "{{FUNCTION_NAME}}.dll"] 

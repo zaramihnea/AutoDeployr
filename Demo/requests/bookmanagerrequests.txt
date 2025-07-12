@@ -1,0 +1,33 @@
+/signup
+
+{
+    "name": "Jane Austen",
+    "email": "jane@gmail.com",
+    "password": "jane123"
+}
+
+/addBook
+
+{
+    "user_id": "4",
+    "title": "Pride and Prejudice"
+}
+
+/getUserBooks
+
+{
+    "user_id": "4"
+}
+
+/estimateBookPrice
+
+{
+    "book_id": "5"
+}
+
+/deleteBook
+
+{
+    "book_id": "5"
+}
+

@@ -1,0 +1,22 @@
+https://github.com/zaramihnea/taskmanager
+
+
+post_tasks - add task
+{
+    "title": "Repair guitar",
+    "description": "Buy strings and fix the guitar",
+}
+
+post_tasks_complete - complete task
+?id=8
+
+
+put_tasks - edit description
+?id=8
+{
+    "description": "Buy string and fix the guitar, then play a song"
+}
+
+
+delete_tasks - delete put_tasks
+?id=8

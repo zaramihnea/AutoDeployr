@@ -1,0 +1,174 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.IO;
+using System.Text;
+
+namespace {{FUNCTION_NAME}};
+
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        try
+        {
+            // Parse the event JSON from environment variable
+            var eventJson = Environment.GetEnvironmentVariable("FUNCTION_EVENT_JSON");
+            if (string.IsNullOrEmpty(eventJson))
+            {
+                Console.WriteLine("FINAL_RESULT: " + JsonSerializer.Serialize(new {
+                    statusCode = 400,
+                    headers = new { ContentType = "application/json" },
+                    body = new { error = "No event data provided in FUNCTION_EVENT_JSON environment variable" }
+                }));
+                Environment.Exit(1);
+            }
+            var eventData = JsonSerializer.Deserialize<JsonElement>(eventJson);
+            
+            // Execute the function logic
+            var result = await ExecuteFunction(eventData);
+            
+            // Output result in the expected format (same as Python functions)
+            Console.WriteLine("FINAL_RESULT: " + JsonSerializer.Serialize(new {
+                statusCode = 200,
+                headers = new { ContentType = "application/json" },
+                body = result
+            }));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("FINAL_RESULT: " + JsonSerializer.Serialize(new {
+                statusCode = 500,
+                headers = new { ContentType = "application/json" },
+                body = new { error = ex.Message, stackTrace = ex.StackTrace }
+            }));
+            Environment.Exit(1);
+        }
+    }
+
+    private static async Task<object> ExecuteFunction(JsonElement eventData)
+    {
+        try
+        {
+            // Extract common parameters from event data
+            var httpMethod = eventData.TryGetProperty("httpMethod", out var method) ? method.GetString() : "GET";
+            var path = eventData.TryGetProperty("path", out var pathElement) ? pathElement.GetString() : "/";
+            
+            // Extract headers
+            var headers = new Dictionary<string, string>();
+            if (eventData.TryGetProperty("headers", out var headersElement))
+            {
+                foreach (var header in headersElement.EnumerateObject())
+                {
+                    headers[header.Name] = header.Value.GetString() ?? "";
+                }
+            }
+            
+            // Extract query parameters
+            var queryParameters = new Dictionary<string, string>();
+            if (eventData.TryGetProperty("queryStringParameters", out var queryElement) && queryElement.ValueKind != JsonValueKind.Null)
+            {
+                foreach (var param in queryElement.EnumerateObject())
+                {
+                    queryParameters[param.Name] = param.Value.GetString() ?? "";
+                }
+            }
+            
+            // Extract body
+            string body = "";
+            if (eventData.TryGetProperty("body", out var bodyElement))
+            {
+                body = bodyElement.GetString() ?? "";
+            }
+            
+            // Parse JSON body if it's JSON content
+            JsonElement? jsonBody = null;
+            if (!string.IsNullOrEmpty(body) && headers.ContainsKey("content-type") && 
+                headers["content-type"].Contains("application/json"))
+            {
+                try
+                {
+                    jsonBody = JsonSerializer.Deserialize<JsonElement>(body);
+                }
+                catch (JsonException)
+                {
+                    // If JSON parsing fails, keep body as string
+                }
+            }
+            
+            // Parse request body
+            if (jsonBody == null)
+            {
+                return new { 
+                    error = "Request body is required", 
+                    statusCode = 400,
+                    timestamp = DateTime.UtcNow,
+                    function = "{{FUNCTION_NAME}}"
+                };
+            }
+
+            // Deserialize request object
+            {{REQUEST_TYPE}}? request = null;
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+                request = JsonSerializer.Deserialize<{{REQUEST_TYPE}}>(jsonBody.Value.GetRawText(), options);
+            }
+            catch (JsonException ex)
+            {
+                return new { 
+                    error = "Invalid JSON format: " + ex.Message, 
+                    statusCode = 400,
+                    timestamp = DateTime.UtcNow,
+                    function = "{{FUNCTION_NAME}}"
+                };
+            }
+
+            if (request == null)
+            {
+                return new { 
+                    error = "Request object is null", 
+                    statusCode = 400,
+                    timestamp = DateTime.UtcNow,
+                    function = "{{FUNCTION_NAME}}"
+                };
+            }
+
+            // Execute original function logic
+            try
+            {
+                {{FUNCTION_BODY}}
+            }
+            catch (Exception ex)
+            {
+                return new { 
+                    error = ex.Message, 
+                    type = ex.GetType().Name,
+                    timestamp = DateTime.UtcNow,
+                    function = "{{FUNCTION_NAME}}"
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            // Return error in consistent format
+            return new { 
+                error = ex.Message, 
+                type = ex.GetType().Name,
+                timestamp = DateTime.UtcNow,
+                function = "{{FUNCTION_NAME}}"
+            };
+        }
+    }
+}
+
+{{DTO_CLASSES}} 

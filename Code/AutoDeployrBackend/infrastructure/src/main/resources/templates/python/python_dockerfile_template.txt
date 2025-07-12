@@ -1,0 +1,47 @@
+FROM python:3.9-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    FLASK_APP=main.py \
+    FUNCTION_NAME={{FUNCTION_NAME}} \
+    APP_ENV=production \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install system dependencies (needed for some Python packages)
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    libpq-dev \
+    gcc \
+    python3-dev \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy function files and serverless platform modules
+COPY main.py function_wrapper.py ./
+COPY serverless_platform ./serverless_platform/
+
+# Copy external module files if they exist
+COPY *.py ./
+
+# Install base dependencies first (ensure Flask is installed)
+RUN pip install --no-cache-dir Flask==2.0.1 Werkzeug==2.0.1 requests==2.26.0
+
+# Copy and install all dependencies from requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "ERROR: Failed to install some dependencies from requirements.txt. Installing core dependencies only." && \
+     pip install --no-cache-dir Flask==2.0.1 Werkzeug==2.0.1)
+
+# Create an empty .env file to avoid errors if the code looks for it
+RUN touch .env
+
+# Add PATH for any custom modules
+ENV PYTHONPATH=/app
+
+# Output installed packages for debugging
+RUN pip freeze
+
+# Command to run the function wrapper
+CMD ["python", "-u", "function_wrapper.py"] 

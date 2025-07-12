@@ -1,0 +1,481 @@
+#!/usr/bin/env php
+<?php
+
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+
+// Global variable to store the request data extracted from serverless event
+$GLOBALS['serverless_request_data'] = null;
+
+// Laravel helper function mocks for standalone execution
+if (!function_exists('response')) {
+    function response() {
+        return new class {
+            public function json($data, $status = 200, $headers = []) {
+                return [
+                    'statusCode' => $status,
+                    'headers' => array_merge(['Content-Type' => 'application/json'], $headers),
+                    'body' => $data
+                ];
+            }
+        };
+    }
+}
+
+if (!function_exists('request')) {
+    function request($key = null, $default = null) {
+        // Create a mock request object that can access serverless extracted data
+        $requestObj = new class {
+            public function input($key = null, $default = null) {
+                if ($GLOBALS['serverless_request_data'] === null) {
+                    return $default;
+                }
+                
+                if ($key === null) {
+                    return $GLOBALS['serverless_request_data'];
+                }
+                
+                return isset($GLOBALS['serverless_request_data'][$key]) 
+                    ? $GLOBALS['serverless_request_data'][$key] 
+                    : $default;
+            }
+            
+            public function get($key = null, $default = null) {
+                return $this->input($key, $default);
+            }
+            
+            public function all() {
+                return $GLOBALS['serverless_request_data'] ?? [];
+            }
+            
+            public function has($key) {
+                return isset($GLOBALS['serverless_request_data'][$key]);
+            }
+            
+            public function json($key = null, $default = null) {
+                return $this->input($key, $default);
+            }
+        };
+        
+        if ($key === null) {
+            return $requestObj;
+        }
+        
+        return $requestObj->input($key, $default);
+    }
+}
+
+if (!function_exists('now')) {
+    function now() {
+        return (new DateTime())->format('c');
+    }
+}
+
+// Load Laravel autoloader if available
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+    
+    // Initialize Laravel database if Illuminate is available
+    if (class_exists('Illuminate\Database\Capsule\Manager')) {
+        initializeLaravelDatabase();
+    }
+}
+
+// Import Laravel Request class for type compatibility
+if (class_exists('Illuminate\Http\Request')) {
+    class_alias('Illuminate\Http\Request', 'Request');
+}
+
+/**
+ * Initialize Laravel database connection using Capsule
+ */
+function initializeLaravelDatabase() {
+    $capsule = new Illuminate\Database\Capsule\Manager;
+    
+    // Get database configuration from environment
+    $databaseUrl = $_ENV['DATABASE_URL'] ?? null;
+    
+    if ($databaseUrl) {
+        // Parse DATABASE_URL (like Flask app)
+        $capsule->addConnection([
+            'driver' => 'pgsql',
+            'url' => $databaseUrl,
+        ], 'default');
+    } else {
+        // Fallback to individual environment variables
+        $capsule->addConnection([
+            'driver' => $_ENV['DB_CONNECTION'] ?? 'pgsql',
+            'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
+            'port' => $_ENV['DB_PORT'] ?? '5432',
+            'database' => $_ENV['DB_DATABASE'] ?? 'postgres',
+            'username' => $_ENV['DB_USERNAME'] ?? 'postgres',
+            'password' => $_ENV['DB_PASSWORD'] ?? '',
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'schema' => 'public',
+            'sslmode' => 'prefer',
+        ], 'default');
+    }
+    
+    // Make this Capsule instance available globally via static methods
+    $capsule->setAsGlobal();
+    
+    // Setup the Eloquent ORM
+    $capsule->bootEloquent();
+}
+
+// Mock Laravel DB facade for standalone execution
+if (!class_exists('DB')) {
+    class DB {
+        public static function table($table) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::table($table);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+        
+        public static function select($query, $bindings = []) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::select($query, $bindings);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+        
+        public static function insert($query, $bindings = []) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::insert($query, $bindings);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+        
+        public static function update($query, $bindings = []) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::update($query, $bindings);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+        
+        public static function delete($query, $bindings = []) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::delete($query, $bindings);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+        
+        public static function statement($query, $bindings = []) {
+            if (class_exists('Illuminate\Database\Capsule\Manager')) {
+                return Illuminate\Database\Capsule\Manager::statement($query, $bindings);
+            }
+            throw new Exception('Database not initialized. Missing Laravel database dependencies.');
+        }
+    }
+}
+
+/**
+ * Create a Laravel Request object for function parameter
+ */
+function createLaravelRequest($event, $requestData) {
+    // Try to use actual Laravel Request class if available
+    if (class_exists('Illuminate\Http\Request')) {
+        // Create a proper Laravel Request instance with POST data
+        $query = $event['queryStringParameters'] ?? $event['queryParameters'] ?? [];
+        $request_data = $requestData ?? [];
+        
+
+        $attributes = [];
+        $cookies = [];
+        $files = [];
+        $server = [
+            'REQUEST_URI' => $event['path'] ?? '/',
+            'REQUEST_METHOD' => $event['httpMethod'] ?? $event['method'] ?? 'GET',
+            'HTTP_CONTENT_TYPE' => 'application/json'
+        ];
+        $content = null;
+        
+        // Create Laravel Request with proper data
+        $request = new Illuminate\Http\Request($query, $request_data, $attributes, $cookies, $files, $server, $content);
+        
+        // Also populate the input bag for Laravel's input() method
+        if (is_array($requestData)) {
+            foreach ($requestData as $key => $value) {
+                $request->request->set($key, $value);
+                // Also set in query bag for GET-like access
+                $request->query->set($key, $value);
+            }
+        }
+        
+        // Set headers
+        if (isset($event['headers'])) {
+            foreach ($event['headers'] as $key => $value) {
+                $request->headers->set($key, $value);
+            }
+        }
+        
+        return $request;
+    }
+    
+    // Fallback: Create mock Request class that matches Laravel interface
+    if (!class_exists('Request')) {
+        class Request {
+            private $event;
+            private $requestData;
+            private $queryParams;
+            
+            public function __construct($event = [], $requestData = []) {
+                $this->event = $event;
+                $this->requestData = $requestData ?? [];
+                $this->queryParams = $event['queryStringParameters'] ?? $event['queryParameters'] ?? [];
+            }
+            
+            public function input($key = null, $default = null) {
+                if ($key === null) {
+                    return $this->requestData;
+                }
+                return isset($this->requestData[$key]) ? $this->requestData[$key] : $default;
+            }
+            
+            public function get($key = null, $default = null) {
+                return $this->input($key, $default);
+            }
+            
+            public function all() {
+                return $this->requestData;
+            }
+            
+            public function has($key) {
+                return isset($this->requestData[$key]);
+            }
+            
+            public function json($key = null, $default = null) {
+                return $this->input($key, $default);
+            }
+            
+            public function __get($key) {
+                return $this->input($key);
+            }
+            
+            public function query($key = null, $default = null) {
+                if ($key === null) {
+                    return $this->queryParams;
+                }
+                return isset($this->queryParams[$key]) ? $this->queryParams[$key] : $default;
+            }
+            
+            public function method() {
+                return $this->event['httpMethod'] ?? $this->event['method'] ?? 'GET';
+            }
+            
+            public function path() {
+                return $this->event['path'] ?? '/';
+            }
+            
+            public function url() {
+                return $this->event['path'] ?? '/';
+            }
+            
+            public function header($key = null, $default = null) {
+                $headers = $this->event['headers'] ?? [];
+                if ($key === null) {
+                    return $headers;
+                }
+                return isset($headers[$key]) ? $headers[$key] : $default;
+            }
+            
+            public function bearerToken() {
+                $auth = $this->header('Authorization');
+                if ($auth && str_starts_with($auth, 'Bearer ')) {
+                    return substr($auth, 7);
+                }
+                return null;
+            }
+        }
+    }
+    
+    return new Request($event, $requestData);
+}
+
+/**
+ * Main serverless function execution (like Java)
+ * Reads JSON event from CLI args or stdin, executes function, outputs JSON to stdout
+ */
+function executeServerlessFunction() {
+    global $argv;
+    
+    try {
+        // Read JSON event data from environment variable, command line argument, or stdin
+        $eventJson = null;
+        
+        if (isset($_ENV['FUNCTION_EVENT_JSON'])) {
+            // Event from environment variable (preferred method)
+            $eventJson = $_ENV['FUNCTION_EVENT_JSON'];
+        } elseif (isset($argv[1])) {
+            // Event passed as command line argument (fallback)
+            $eventJson = $argv[1];
+        } else {
+            // Read from stdin (fallback)
+            $eventJson = stream_get_contents(STDIN);
+        }
+        
+        // Parse the event
+        if (empty($eventJson)) {
+            $errorResponse = [
+                'statusCode' => 400,
+                'headers' => ['Content-Type' => 'application/json'],
+                'body' => [
+                    'error' => 'No event JSON provided',
+                    'received_args' => $argv ?? [],
+                    'env_var' => $_ENV['FUNCTION_EVENT_JSON'] ?? 'not_set'
+                ]
+            ];
+            echo json_encode($errorResponse);
+            exit(1);
+        }
+        
+        $event = json_decode($eventJson, true);
+        if ($event === null && json_last_error() !== JSON_ERROR_NONE) {
+            $errorResponse = [
+                'statusCode' => 400,
+                'headers' => ['Content-Type' => 'application/json'],
+                'body' => [
+                    'error' => 'Invalid JSON event data',
+                    'json_error' => json_last_error_msg(),
+                    'received_data' => $eventJson
+                ]
+            ];
+            echo json_encode($errorResponse);
+            exit(1);
+        }
+        
+        $event = $event ?? [];
+        
+        // Extract request data from event body for Laravel request() helper
+        if (isset($event['body'])) {
+            if (is_array($event['body']) || is_object($event['body'])) {
+                $GLOBALS['serverless_request_data'] = $event['body'];
+            } else if (is_string($event['body'])) {
+                $GLOBALS['serverless_request_data'] = json_decode($event['body'], true) ?? [];
+            }
+        } else {
+            $GLOBALS['serverless_request_data'] = [];
+        }
+        
+
+        
+        // Add query parameters to request data (like Python and Java do)
+        $queryParams = $event['queryStringParameters'] ?? $event['queryParameters'] ?? [];
+        if (!empty($queryParams) && is_array($queryParams)) {
+            $GLOBALS['serverless_request_data'] = array_merge($GLOBALS['serverless_request_data'], $queryParams);
+        }
+        
+
+        
+        // Extract route parameters from the event
+        $pathParams = $event['pathParameters'] ?? [];
+        $queryParams = $event['queryStringParameters'] ?? $event['queryParameters'] ?? [];
+        $requestMethod = $event['httpMethod'] ?? $event['method'] ?? 'GET';
+        $requestPath = $event['path'] ?? '/';
+        
+        // Create Laravel Request object for function parameter
+        $mockRequest = createLaravelRequest($event, $GLOBALS['serverless_request_data']);
+        // error_log("DEBUG: Laravel Request created. query('id'): " . ($mockRequest->query('id') ?? 'null'));
+        // error_log("DEBUG: Laravel Request has('title'): " . ($mockRequest->has('title') ? 'true' : 'false'));
+        
+        // Extract route parameters from URL pattern
+        $functionRoute = '{{ROUTE}}';
+        $routeParameters = [];
+        
+        // Simple parameter extraction from route pattern  
+        if (preg_match_all('/\{([^}]+)\}/', $functionRoute, $matches)) {
+            foreach ($matches[1] as $paramName) {
+                if (isset($pathParams[$paramName])) {
+                    $routeParameters[$paramName] = $pathParams[$paramName];
+                } else {
+                    // Try to extract from path manually
+                    $routePattern = str_replace('{' . $paramName . '}', '([^/]+)', $functionRoute);
+                    if (preg_match('#^' . $routePattern . '$#', $requestPath, $pathMatches)) {
+                        $routeParameters[$paramName] = $pathMatches[1] ?? null;
+                    } else {
+                        $routeParameters[$paramName] = null;
+                    }
+                }
+            }
+        }
+        
+        // Execute the Laravel function
+        $functionBody = <<<'PHPCODE'
+{{FUNCTION_BODY}}
+PHPCODE;
+        
+        // Evaluate and execute the function
+        $closure = eval("return $functionBody;");
+        
+        if ($closure instanceof Closure) {
+            // Pass Laravel Request object as first parameter (standard Laravel pattern)
+            $result = $closure($mockRequest);
+        } else {
+            $result = $closure;
+        }
+        
+        // Process the result and format as serverless response
+        $response = processLaravelResponse($result);
+        
+        // Output JSON response to stdout (like Java)
+        echo json_encode($response);
+        exit(0);
+        
+    } catch (Exception $e) {
+        $errorResponse = [
+            'statusCode' => 500,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => [
+                'error' => $e->getMessage(),
+                'function' => '{{FUNCTION_NAME}}',
+                'timestamp' => date('c')
+            ]
+        ];
+        
+        echo json_encode($errorResponse);
+        exit(1);
+    }
+}
+
+/**
+ * Process Laravel response into serverless format
+ */
+function processLaravelResponse($result) {
+    if (is_array($result)) {
+        // Already formatted response
+        return $result;
+    } else if (is_object($result) && method_exists($result, 'getData')) {
+        // Laravel JsonResponse mock object
+        $responseData = $result->getData();
+        $statusCode = method_exists($result, 'getStatusCode') ? $result->getStatusCode() : 200;
+        return [
+            'statusCode' => $statusCode,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => $responseData
+        ];
+    } else if (is_string($result)) {
+        // String response
+        return [
+            'statusCode' => 200,
+            'headers' => ['Content-Type' => 'text/plain'],
+            'body' => $result
+        ];
+    } else {
+        // Default response
+        return [
+            'statusCode' => 200,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => $result
+        ];
+    }
+}
+
+// Execute the serverless function (like Java main method)
+executeServerlessFunction();
+
+?> 

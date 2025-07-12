@@ -1,0 +1,36 @@
+package com.serverless;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+{{#ADDITIONAL_IMPORTS}}
+{{ADDITIONAL_IMPORTS}}
+{{/ADDITIONAL_IMPORTS}}
+
+/**
+ * Serverless Endpoint Controller
+ */
+@RestController
+public class EndpointController {
+
+    private static final Logger logger = LoggerFactory.getLogger(EndpointController.class);
+
+{{#DEPENDENCIES}}
+    // Injected dependencies
+    {{DEPENDENCIES}}
+{{/DEPENDENCIES}}
+
+    {{REQUEST_MAPPING}}
+    public {{RETURN_TYPE}} {{FUNCTION_NAME}}({{PARAMETERS}}) {
+        try {
+            logger.info("Executing endpoint: {{FUNCTION_NAME}}");
+{{FUNCTION_BODY}}
+        } catch (Exception e) {
+            logger.error("Error executing endpoint: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+} 

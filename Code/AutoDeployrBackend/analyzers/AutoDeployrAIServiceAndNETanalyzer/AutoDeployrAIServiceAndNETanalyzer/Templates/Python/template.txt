@@ -1,0 +1,40 @@
+from flask import Flask, jsonify, request
+import requests
+
+app = Flask(__name__)
+
+@app.route('/api/execute', methods=['GET', 'POST'])
+def execute():
+    try:
+        # Initialize variables BEFORE conditional blocks
+        param = ''
+        result = 0
+        external_data = []
+        
+        # Get request data
+        if request.method == 'GET':
+            # Handle GET parameters
+            param = request.args.get('param', default='', type=str)
+        else:
+            # Handle POST JSON data
+            data = request.get_json() or {}
+            param = data.get('param', '')
+        
+        # Example of making HTTP request to external API
+        # response = requests.get('http://external-api.com/data')
+        # if response.status_code == 200:
+        #     external_data = response.json()  # Correct way to parse JSON
+        # # Note: external_data was initialized above, so it's safe to use here
+        
+        # Core functionality
+        result = 1 + 2  # Replace with your operation
+        
+        # Return JSON response (correct use of jsonify)
+        # All variables are guaranteed to be defined
+        return jsonify({'result': result})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000) 

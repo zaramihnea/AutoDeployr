@@ -1,0 +1,186 @@
+package com.serverless;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+
+/**
+ * Comprehensive Java Function Wrapper - Matching Python deployment functionality
+ * Direct function invocation without Spring Boot overhead
+ * Handles events like Python's function_wrapper.py
+ */
+public class FunctionWrapper {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // Define HTTP methods as constants (matching Python wrapper)
+    private static final String GET = "GET";
+    private static final String POST = "POST";
+    private static final String PUT = "PUT";
+    private static final String DELETE = "DELETE";
+    private static final String PATCH = "PATCH";
+    private static final String OPTIONS = "OPTIONS";
+    private static final String HEAD = "HEAD";
+
+    public static void main(String[] args) throws Exception {
+        if (args.length < 1) {
+            System.err.println("Usage: java FunctionWrapper '<json_event>'");
+            System.exit(1);
+        }
+
+        try {
+            // Parse JSON event from command line argument (matching Python)
+            Map<String, Object> event = objectMapper.readValue(args[0], new TypeReference<Map<String, Object>>(){});
+            
+            // Execute handler and print result to stdout
+            FunctionWrapper wrapper = new FunctionWrapper();
+            Map<String, Object> result = wrapper.handleRequest(event);
+            String resultJson = objectMapper.writeValueAsString(result);
+            System.out.println(resultJson);
+            
+        } catch (Exception e) {
+            System.err.println("Error decoding JSON input or executing function: " + e.getMessage());
+            e.printStackTrace(System.err);
+            
+            // Output error response in proper format
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", 500);
+            errorResponse.put("headers", Map.of("Content-Type", "application/json"));
+            errorResponse.put("body", Map.of("error", "Function execution failed: " + e.getMessage(), 
+                                            "details", Arrays.toString(e.getStackTrace())));
+            System.out.println(objectMapper.writeValueAsString(errorResponse));
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Handle request method that ServerlessApplication calls
+     */
+    public Map<String, Object> handleRequest(Map<String, Object> event) {
+        try {
+            // Extract event components
+            @SuppressWarnings("unchecked")
+            Map<String, Object> headers = (Map<String, Object>) event.getOrDefault("headers", new HashMap<>());
+            String method = (String) event.getOrDefault("httpMethod", event.getOrDefault("method", POST));
+            String path = (String) event.getOrDefault("path", "/");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> queryParameters = (Map<String, Object>) event.getOrDefault("queryParameters", new HashMap<>());
+            Object bodyRaw = event.get("body");
+            
+            // Process headers
+            Map<String, String> processedHeaders = new HashMap<>();
+            if (headers != null) {
+                for (Map.Entry<String, Object> entry : headers.entrySet()) {
+                    if (entry.getKey() instanceof String && entry.getValue() instanceof String) {
+                        String key = "HTTP_" + entry.getKey().toUpperCase().replace("-", "_");
+                        processedHeaders.put(key, (String) entry.getValue());
+                    }
+                }
+            }
+            
+            // Process body data
+            Map<String, Object> userData = new HashMap<>();
+            
+            // Try parsing if body is string
+            if (bodyRaw instanceof String) {
+                try {
+                    userData = objectMapper.readValue((String) bodyRaw, new TypeReference<Map<String, Object>>(){});
+                } catch (Exception e) {
+                    // Keep user_data as raw if not JSON
+                    userData.put("raw_body", bodyRaw);
+                }
+            } else if (bodyRaw instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> typedBodyRaw = (Map<String, Object>) bodyRaw;
+                userData = typedBodyRaw;
+            } else if (bodyRaw != null) {
+                // Wrap non-dict body
+                userData.put("raw_body", bodyRaw);
+            }
+            
+            // Add query parameters if they exist
+            if (queryParameters != null && !queryParameters.isEmpty()) {
+                userData.putAll(queryParameters); // Merge query params into data
+            }
+            
+            // Execute the actual function
+            Object result = executeFunction(processedHeaders, method, path, queryParameters, userData, event);
+            
+            // Normalize response
+            Map<String, Object> normalizedResponse = normalizeResponse(result);
+            return normalizedResponse;
+            
+        } catch (Exception e) {
+            String errorMessage = "Error executing function {{FUNCTION_NAME}}: " + e.getMessage();
+            System.err.println(errorMessage);
+            e.printStackTrace(System.err);
+            
+            // Return standardized error response
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", 500);
+            errorResponse.put("headers", Map.of("Content-Type", "application/json"));
+            errorResponse.put("body", Map.of("error", errorMessage, 
+                                            "details", Arrays.toString(e.getStackTrace())));
+            return errorResponse;
+        }
+    }
+
+    /**
+     * Execute the actual function - this will be replaced with the real function call
+     */
+    private Object executeFunction(Map<String, String> headers, String method, String path, 
+                                   Map<String, Object> queryParameters, Map<String, Object> userData, 
+                                   Map<String, Object> originalEvent) {
+        try {
+            // This is where the actual function call will be inserted
+            {{FUNCTION_CALL}}
+        } catch (Exception e) {
+            throw new RuntimeException("Function execution failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Normalize response to match expected serverless format (matching Python's adapter)
+     */
+    private Map<String, Object> normalizeResponse(Object result) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (result instanceof Map) {
+            Map<?, ?> resultMap = (Map<?, ?>) result;
+            // Check if it's already a proper response format
+            if (resultMap.containsKey("statusCode")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> typedResult = (Map<String, Object>) result;
+                return typedResult;
+            }
+        }
+        
+        // Wrap result in standard response format (matching Python behavior)
+        response.put("statusCode", 200);
+        
+        // Set appropriate headers
+        Map<String, String> responseHeaders = new HashMap<>();
+        responseHeaders.put("Content-Type", "application/json");
+        
+        // Handle different result types
+        if (result instanceof String) {
+            // If result is already a string, check if it's JSON
+            try {
+                objectMapper.readTree((String) result);
+                responseHeaders.put("Content-Type", "application/json");
+                response.put("body", result);
+            } catch (Exception e) {
+                // Not JSON, treat as plain text
+                responseHeaders.put("Content-Type", "text/plain");
+                response.put("body", result);
+            }
+        } else {
+            // Serialize object to JSON
+            response.put("body", result);
+        }
+        
+        response.put("headers", responseHeaders);
+        return response;
+    }
+} 

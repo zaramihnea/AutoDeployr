@@ -1,0 +1,41 @@
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+{{ADDITIONAL_USINGS}}
+
+namespace {{FUNCTION_NAME}};
+
+[ApiController]
+[Route("{{FUNCTION_PATH}}")]
+public class {{CONTROLLER_NAME}} : ControllerBase
+{
+    private readonly ILogger<{{CONTROLLER_NAME}}> _logger;
+    {{ADDITIONAL_FIELDS}}
+
+    public {{CONTROLLER_NAME}}(ILogger<{{CONTROLLER_NAME}}> logger{{ADDITIONAL_CONSTRUCTOR_PARAMS}})
+    {
+        _logger = logger;
+        {{ADDITIONAL_CONSTRUCTOR_BODY}}
+    }
+
+    {{HTTP_METHOD_ATTRIBUTES}}
+    public async Task<IActionResult> {{METHOD_NAME}}({{METHOD_PARAMETERS}})
+    {
+        try
+        {
+            _logger.LogInformation("Executing function {{FUNCTION_NAME}}");
+            
+            {{FUNCTION_BODY}}
+            
+            return Ok(new { 
+                message = "Function executed successfully", 
+                function = "{{FUNCTION_NAME}}",
+                path = "{{FUNCTION_PATH}}"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing function {{FUNCTION_NAME}}");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+} 

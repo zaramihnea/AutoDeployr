@@ -1,0 +1,11 @@
+# PHP Laravel Analyzer Dependencies
+# This analyzer uses PHP with Composer for dependency management
+# Main dependencies are defined in composer.json:
+# - nikic/php-parser ^4.15 (for AST parsing)
+# - symfony/console ^6.0 (for CLI interface)
+# - symfony/finder ^6.0 (for file discovery)
+
+# To install PHP dependencies, run:
+# composer install
+
+# PHP version requirement: ^8.0 

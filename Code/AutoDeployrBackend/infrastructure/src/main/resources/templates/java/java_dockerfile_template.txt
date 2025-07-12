@@ -1,0 +1,93 @@
+FROM maven:3.8-openjdk-17 AS build
+
+WORKDIR /app
+
+# Set maximum heap size for Maven
+ENV MAVEN_OPTS="-Xmx2g -XX:+HeapDumpOnOutOfMemoryError"
+
+# Copy only pom.xml first to leverage Docker cache for dependencies
+COPY pom.xml .
+
+# Debug: Show what we copied
+RUN echo "=== POM.XML CONTENT ===" && cat pom.xml
+
+# Install dependencies
+RUN mvn dependency:go-offline -B || echo "Failed to download dependencies, will try during build"
+
+# Copy source code
+COPY src/ ./src/
+
+# Debug: Show source structure
+RUN echo "=== SOURCE STRUCTURE ===" && find src/ -type f
+
+# Build the application - creates a fat JAR with all dependencies
+# Capture Maven output and show it
+RUN echo "=== Starting Maven build ===" && \
+    mvn clean package -DskipTests 2>&1 | tee maven-build.log && \
+    echo "=== Maven build completed ===" && \
+    echo "=== Maven build log ===" && \
+    cat maven-build.log && \
+    echo "=== Checking target directory ===" && \
+    ls -la target/ || echo "Target directory does not exist" && \
+    echo "=== JAR files found: ===" && \
+    find target/ -name "*.jar" -type f 2>/dev/null || echo "No JAR files found"
+
+# Use smaller runtime image
+FROM openjdk:17-jdk-slim
+
+WORKDIR /app
+
+# Environment variables
+ENV FUNCTION_NAME="{{FUNCTION_NAME}}"
+
+# Copy all JAR files to a temp directory first, then select the main one
+# This avoids the "multiple source files" error when copying with wildcards
+COPY --from=build /app/target/ ./target/
+RUN echo "=== Checking copied target directory ===" && \
+    ls -la target/ && \
+    echo "=== Looking for JAR files ===" && \
+    find target/ -name "*.jar" -type f && \
+    echo "=== Selecting and copying the correct JAR file ===" && \
+    if ls target/{{FUNCTION_NAME}}-*.jar > /dev/null 2>&1; then \
+        echo "Found function-specific JAR, copying main JAR (not original)" && \
+        for jar in target/{{FUNCTION_NAME}}-*.jar; do \
+            case "$jar" in \
+                *original*) \
+                    echo "Skipping original JAR: $jar" ;; \
+                *) \
+                    echo "Copying main JAR: $jar" && \
+                    cp "$jar" ./function.jar && \
+                    break ;; \
+            esac; \
+        done; \
+    else \
+        echo "No function-specific JAR found, trying any non-original JAR" && \
+        for jar in target/*.jar; do \
+            case "$jar" in \
+                *original*) \
+                    echo "Skipping original JAR: $jar" ;; \
+                *) \
+                    echo "Copying JAR: $jar" && \
+                    cp "$jar" ./function.jar && \
+                    break ;; \
+            esac; \
+        done; \
+    fi && \
+    if [ ! -f ./function.jar ]; then \
+        echo "=== FAILED: Could not find suitable JAR file ===" && \
+        echo "Available JAR files:" && \
+        ls -la target/*.jar && \
+        exit 1; \
+    fi && \
+    echo "=== Successfully copied JAR file ===" && \
+    ls -la function.jar
+
+# Clean up target directory to reduce image size
+RUN rm -rf target/
+
+# Simple entrypoint - just run the function wrapper like Python
+# The function wrapper will:
+# 1. Parse JSON event from command line argument
+# 2. Call the function directly (no HTTP)
+# 3. Output JSON result to stdout
+ENTRYPOINT ["java", "-jar", "function.jar"] 

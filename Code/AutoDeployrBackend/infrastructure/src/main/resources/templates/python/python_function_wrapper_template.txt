@@ -1,0 +1,96 @@
+import json
+import sys
+import traceback
+from flask import Flask, request
+
+# Define HTTP methods as constants to avoid NameError
+GET = 'GET'
+POST = 'POST'
+PUT = 'PUT'
+DELETE = 'DELETE'
+PATCH = 'PATCH'
+OPTIONS = 'OPTIONS'
+HEAD = 'HEAD'
+
+try:
+    from main import {{APP_NAME}}, {{FUNCTION_NAME}}
+    from serverless_platform.adapter import normalize_response
+except ImportError as e:
+    print(f"Error importing from main.py or adapter: {e}", file=sys.stderr)
+    sys.exit(1)
+
+def handler(event):
+    with {{APP_NAME}}.app_context():
+        try:
+            environ_base = {}
+            headers = event.get('headers', {})
+            for k, v in (headers or {}).items():
+                # Non-string headers can cause issues
+                if isinstance(k, str) and isinstance(v, str):
+                    key = f'HTTP_{k.upper().replace("-", "_")}'
+                    environ_base[key] = v
+
+            metadata_keys = {'headers', 'method', 'path', 'queryParameters', 'requestContext', 'isBase64Encoded', 'httpMethod', 'body'}
+            user_data = event.get('body', {})
+            # Try parsing if body is string
+            if isinstance(user_data, str):
+                try: 
+                    user_data = json.loads(user_data)
+                except json.JSONDecodeError: 
+                    # Keep user_data as string if not JSON
+                    pass
+            # If not parsed or not string, ensure it's a dict
+            if not isinstance(user_data, dict):
+                user_data = {'raw_body': user_data} # Wrap non-dict body
+            
+            # Add query parameters if they exist
+            query_params = event.get('queryParameters')
+            if query_params:
+                user_data.update(query_params) # Merge query params into data
+
+            # Create request context
+            with {{APP_NAME}}.test_request_context(
+                path=event.get('path', '/'),
+                method=event.get('httpMethod', event.get('method', 'POST')),
+                headers=headers,
+                query_string=event.get('queryParameters'),
+                # Choose between json or data, not both
+                **({
+                    'json': user_data if isinstance(user_data, dict) else None
+                } if isinstance(user_data, dict) else {
+                    'data': event.get('body') if isinstance(event.get('body'), (str, bytes)) else json.dumps(user_data)
+                }),
+                environ_base=environ_base
+            ):
+                # Execute original function
+                # Calling: {{FUNCTION_NAME}}({{FUNCTION_ARGS}})
+                result = {{FUNCTION_NAME}}({{FUNCTION_ARGS}})
+
+                # Use the adapter to normalize the response
+                normalized_response = normalize_response(result)
+                return normalized_response
+
+        except Exception as e:
+            error_message = f"Error executing function {{FUNCTION_NAME}}: {e}"
+            print(error_message, file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            return {
+                'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': error_message, 'details': traceback.format_exc()})
+            }
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python function_wrapper.py '<json_event>'", file=sys.stderr)
+        event = {}
+    else:
+        try:
+            event = json.loads(sys.argv[1])
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON input: {e}", file=sys.stderr)
+            sys.exit(1)
+    
+    # Execute handler and print result to stdout
+    result = handler(event)
+    print(json.dumps(result)) 

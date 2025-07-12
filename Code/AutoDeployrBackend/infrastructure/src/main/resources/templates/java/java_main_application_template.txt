@@ -1,0 +1,84 @@
+package com.serverless;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.HashMap;
+
+{{ADDITIONAL_IMPORTS}}
+
+/**
+ * Serverless Function Main Class
+ * Generated from template - handles {{FUNCTION_NAME}} function
+ */
+public class ServerlessApplication {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServerlessApplication.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    {{GLOBAL_VARIABLES}}
+
+    {{DATABASE_SETUP}}
+
+    static {
+        {{STATIC_INITIALIZATION}}
+    }
+
+    {{FUNCTION_DEPENDENCIES}}
+
+{{FUNCTION_SOURCE}}
+
+    public static void main(String[] args) {
+        try {
+            // Parse arguments or use default empty event
+            Map<String, Object> event = new HashMap<>();
+            if (args.length > 0) {
+                try {
+                    event = objectMapper.readValue(args[0], Map.class);
+                } catch (Exception e) {
+                    // If parsing fails, create a basic HTTP-like event
+                    event.put("headers", new HashMap<>());
+                    event.put("path", "/{{FUNCTION_NAME}}");
+                    event.put("method", "GET");
+                    event.put("queryParameters", new HashMap<>());
+                    event.put("userData", new HashMap<>());
+                    event.put("originalEvent", new HashMap<>());
+                }
+            } else {
+                // Create default event structure
+                event.put("headers", new HashMap<>());
+                event.put("path", "/{{FUNCTION_NAME}}");
+                event.put("method", "GET");
+                event.put("queryParameters", new HashMap<>());
+                event.put("userData", new HashMap<>());
+                event.put("originalEvent", new HashMap<>());
+            }
+
+            // Initialize and invoke the function wrapper
+            FunctionWrapper wrapper = new FunctionWrapper();
+            Map<String, Object> response = wrapper.handleRequest(event);
+
+            // Output only the JSON response to stdout
+            String jsonResponse = objectMapper.writeValueAsString(response);
+            System.out.println(jsonResponse);
+
+        } catch (Exception e) {
+            // Output error response to stdout
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("statusCode", 500);
+            errorResponse.put("headers", new HashMap<>());
+            Map<String, String> errorBody = new HashMap<>();
+            errorBody.put("error", "Internal server error");
+            errorBody.put("message", e.getMessage());
+            errorResponse.put("body", errorBody);
+            
+            try {
+                String jsonResponse = objectMapper.writeValueAsString(errorResponse);
+                System.out.println(jsonResponse);
+            } catch (Exception jsonError) {
+                System.out.println("{\"statusCode\":500,\"headers\":{},\"body\":{\"error\":\"Failed to serialize error response\"}}");
+            }
+            
+            System.exit(1);
+        }
+    }
+} 

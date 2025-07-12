@@ -1,0 +1,21 @@
+{
+    "name": "autodeployr/laravel-analyzer",
+    "description": "Laravel AST analyzer for AutoDeployr serverless deployment",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "nikic/php-parser": "^4.15",
+        "symfony/console": "^6.0",
+        "symfony/finder": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AutoDeployr\\LaravelAnalyzer\\": "src/"
+        }
+    },
+    "bin": [
+        "analyzer.php"
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+} 

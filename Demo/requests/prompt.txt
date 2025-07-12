@@ -1,0 +1,26 @@
+Create a single GET endpoint /estimateAll, that first calls http://host.docker.internal:8080/api/v1/zaramihnea/functions/bookmanager/get_all_books  GET 
+(the expected response is 
+{
+  "books": [
+    {
+      "id": 1,
+      "title": "Book Title",
+      "author": "Author Name"
+    },
+    {
+      "id": 2, 
+      "title": "Another Book",
+      "author": "Another Author"
+    }
+  ]
+}) 
+to get all the books from a library, then calls POST http://host.docker.internal:8080/api/v1/zaramihnea/functions/bookmanager/estimate_book_price with the json body
+{
+  "book_id" : <<book id>>
+} 
+(expected JSON response 
+{
+  "book_title": "Book Title",
+  "estimated_price": "$15-25 USD"
+}) 
+to estimate the price for each book that it got from the first endpoint. It should return all book titles and the price that was estimated.
