@@ -218,3 +218,5 @@ This project was developed as part of a bachelor's thesis at the Faculty of Comp
 - **Serverless Architecture Patterns**: Best practices for serverless design
 - **Code Analysis Techniques**: Static analysis for dependency detection
 - **Multi-Language Support**: Framework-agnostic serverless transformation
+
+## ⚠️ Notice: This repository is publicly visible but does not accept external contributions, issues, or pull requests.
